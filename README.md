@@ -3,7 +3,7 @@ I designed and programmed a first of its kind co-bot tightening cell for toyota 
 
 The cell is used to tighten the trailing arm bolts on the rear axle assembly of the Toyota Rav4 and Lexus Nx.
 
-This cell was a flagship project for our company and the the toyota MIT group as it features no safety devices within the cell and can function within safety limits along side production workers.
+This cell was a flagship project for our company and the the toyota MIT group as it features no safety devices within the cell and can function within safety limits along side production workers. The hope is, to apply this type of project in many more toyota plants in order to automate the high torque tightening applications, while also maintaning the flexibility required for certain processes.
 
 A video of the prototype setup can be found here [ https://drive.google.com/drive/u/1/folders/1njsOHZGtnLWmlKKupl8BOt0N7EUAZy_4 ]
 
