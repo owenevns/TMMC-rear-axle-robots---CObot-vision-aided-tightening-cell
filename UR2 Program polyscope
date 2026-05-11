@@ -1,0 +1,311 @@
+ Program
+   Variables Setup
+   BeforeStart
+     Script: YSwapZ helper codeV2.script
+     KeySetCommParam("192.168.1.21", 8500)
+     KeySetMoveParam(10, 500)
+     KeyConnect()
+     Set LH_BOLT_pos= False 
+     Set RH_BOLT_pos= False 
+     Set LH_ZONE_CLEAR=Off
+     Set RH_ZONE_CLEAR=Off
+     Set LH_vision_pos=Off
+     Set RH_vision_pos=Off
+     LHclr≔LH_ZONE_CLEAR
+     RHclr≔RH_ZONE_CLEAR
+     DangerLH≔ False 
+     DangerRH≔ False 
+     DangerBypass≔ False 
+     DangerLH_dist≔0
+     DangerRH_dist≔0
+     always_off≔ False 
+     breakout1RH≔ False 
+     breakout2RH≔ False 
+     breakout1LH≔ False 
+     breakout2LH≔ False 
+     force_complete≔ False 
+     ResultPose≔p[0,0,0,0,0,0]
+   Robot Program
+     If PRG_CALL≟10
+       Call Main_prog
+     ElseIf PRG_CALL≟20
+       Call Home_prog
+     ElseIf PRG_CALL≟30
+       Call Bypass_prog
+     Else
+       Wait: 0.3
+   Main_prog
+     Set PRG_ECHO=10
+     Loop PRG_CALL≟10  and AUTO_Mode≟ True 
+       Wait CYCLE_START=HI
+       Wait CLAMPS_ADV=HI
+       breakout1RH≔ False 
+       breakout2RH≔ False 
+       RH Side
+         Wait OK_to_ENTER_RH=HI
+         MoveJ
+           Set LH_ZONE_CLEAR=Off
+           Set RH_ZONE_CLEAR=Off
+           Home_pos
+           RH_photo
+           Wait: 0.5
+           Set RH_vision_pos=On
+           Vision Retry
+             count≔0
+             breakout1RH≔ False 
+             Loop breakout2RH≟ False 
+               KeyIssueTrigger()
+               Wait: 0.5
+               If KeyIssueTrigger()≟1
+                 Set Vision_Fault= False 
+                 breakout2RH≔ True 
+               ElseIf count≟2 and KeyIssueTrigger()≠1
+                 Set Vision_Fault=HI:Pulse 0.3
+                 Wait: 0.3
+                 count≔0
+                 Set RH_vision_pos=Off
+                 breakout1RH≔ True 
+                 breakout2RH≔ True 
+               count≔count+1
+               Wait: 1.0
+           align_RHbolt1≔pose_add(RHbolt1_appr, ResultPose)
+           onto_RHbolt1≔pose_add(align_RHbolt1, p[0, -0.03, 0.00, 0, 0, 0])
+           Set RH_vision_pos=Off
+           If breakout1RH≟ False 
+             RHbolt1_appr
+             Screwdriving
+               MoveL
+                 onto_RHbolt1
+                 Set RH_BOLT_pos= True 
+               Until OK 
+                 'Add actions for this handler below'
+                 Wait: 0.5
+               Error: Not OK 
+                 'Add actions for this handler below'
+                 Wait: 0.5
+               Error: Timeout 8.50 s
+                 'Add actions for this handler below'
+                 Set NR2_CTO=HI:Pulse 0.5
+                 Wait: 0.5
+             Set RH_BOLT_pos= False 
+             align_RHbolt1
+           breakout1RH≔ False 
+           RHbolt1_appr
+       Wait OK_to_ENTER_LH=HI
+       MoveJ
+         Intermediate1
+         Set RH_ZONE_CLEAR=On
+         Set LH_ZONE_CLEAR=Off
+         intermediate2
+       LH Side
+         MoveJ
+           LH_photo
+           Wait: 0.5
+           Set LH_vision_pos=On
+           Vision Retry
+             count≔0
+             breakout1LH≔ False 
+             breakout2LH≔ False 
+             Loop breakout2LH≟ False 
+               KeyIssueTrigger()
+               Wait: 0.5
+               If KeyIssueTrigger()≟1
+                 Set Vision_Fault= False 
+                 breakout2LH≔ True 
+               ElseIf count≟2 and KeyIssueTrigger()≠1
+                 Set Vision_Fault=HI:Pulse 0.3
+                 Wait: 0.3
+                 count≔0
+                 Set RH_vision_pos=Off
+                 breakout2LH≔ True 
+                 breakout1LH≔ True 
+               count≔count+1
+               Wait: 1.0
+           align_LHbolt1≔pose_add(LHbolt1_appr, ResultPose)
+           onto_LHbolt1≔pose_add(align_LHbolt1, p[0, -0.03, 0, 0, 0, 0])
+           Set LH_vision_pos=Off
+           If breakout1LH≟ False 
+             LHbolt_pre_appr
+             LHbolt1_appr
+             align_LHbolt1
+             Screwdriving
+               MoveL
+                 onto_LHbolt1
+                 Set LH_BOLT_pos=On
+               Until OK 
+                 'Add actions for this handler below'
+                 Wait: 0.5
+               Error: Not OK 
+                 'Add actions for this handler below'
+                 Wait: 0.5
+               Error: Timeout 8.50 s
+                 'Add actions for this handler below'
+                 Set NR2_CTO=HI:Pulse 0.5
+                 Wait: 0.5
+             Set LH_BOLT_pos= False 
+           breakout1LH≔ False 
+           LHbolt1_appr
+         'clear out'
+         MoveJ
+           LH_clear
+           Set RH_ZONE_CLEAR=On
+           Set LH_ZONE_CLEAR=On
+         Wait OK_to_ENTER_LH≟ True  and OK_to_ENTER_RH≟ True 
+       Backup sequence
+         If BACKUP_REQD≟ True 
+           Reverse_TCP_RH≔pose_add(get_actual_tcp_pose(), p[0,0.1,0,0,0,0])
+           Raise_TCP≔pose_add(get_actual_tcp_pose(), p[0,0,0.3,0,0,0])
+           If DangerRH_dist≤0.2
+             DangerRH≔ True 
+           ElseIf DangerLH_dist≤0.2
+             DangerLH≔ True 
+           If DangerLH≟ True 
+             MoveL
+               Raise_TCP
+               clear_part
+               DangerLH≔ False 
+             MoveJ
+               Bypass_pos
+           ElseIf DangerRH≟ True 
+             MoveL
+               Reverse_TCP_RH
+               DangerRH≔ False 
+             MoveJ
+               safe
+               Bypass_pos
+           Else
+             MoveJ
+               Bypass_pos
+               force_complete≔ True 
+           Wait FORCE_COMPLETE=HI
+           Set LH_ZONE_CLEAR=Off
+           Set RH_ZONE_CLEAR=Off
+       Return to home
+         MoveJ
+           Set LH_ZONE_CLEAR=Off
+           Set RH_ZONE_CLEAR=Off
+           Wait: 0.5
+           intermediate_3
+           Home_pos
+           force_complete≔ False 
+   Home_prog
+     Set PRG_ECHO=20
+     'reference locations'
+     Wait CYCLE_START=HI
+     Set BYPASS_pos=Off
+     Reverse_TCP_RH≔pose_add(get_actual_tcp_pose(), p[0,0.1,0,0,0,0])
+     Reverse_TCP_blt≔pose_add(get_actual_tcp_pose(), p[0,0.05,0,0,0,0])
+     Raise_TCP≔pose_add(get_actual_tcp_pose(), p[0,0,0.3,0,0,0])
+     current_pos≔get_actual_tcp_pose()
+     end_screw_driving()
+     MoveJ
+       current_pos
+     If DangerRH_dist≤0.2
+       DangerRH≔ True 
+     ElseIf DangerLH_dist≤0.2
+       DangerLH≔ True 
+     ElseIf bypass_dist≤1
+       DangerBypass≔ True 
+     Loop PRG_CALL≟20 
+       If always_off≟ True 
+         MoveJ
+           Danger_zone_LH
+           Danger_zone_RH
+       If DangerLH≟ True  and LH_BOLT_pos≟ False  and RH_BOLT_pos≟ False 
+         MoveL
+           Raise_TCP
+             Until (io)
+           clear_part
+           DangerLH≔ False 
+       ElseIf LH_BOLT_pos≟ True  or RH_BOLT_pos≟ True 
+         MoveL
+           Reverse_TCP_blt
+             Until (io)
+         Set LH_BOLT_pos= False 
+         Set RH_BOLT_pos= False 
+       ElseIf DangerRH≟ True 
+         MoveL
+           Reverse_TCP_RH
+             Until (io)
+           DangerRH≔ False 
+       ElseIf DangerBypass≟ True 
+         MoveJ
+           intermediate_3
+             Until (io)
+           DangerBypass≔ False 
+       Else
+         MoveJ
+           Home_pos
+             Until (io)
+   Bypass_prog
+     Set PRG_ECHO=30
+     Wait CYCLE_START=HI
+     Set HOME_pos=Off
+     Reverse_TCP_RH≔pose_sub(get_actual_tcp_pose(), p[0,0.15,0,0,0,0])
+     Reverse_TCP_blt≔pose_add(get_actual_tcp_pose(), p[0,0.05,0,0,0,0])
+     Raise_TCP≔pose_add(get_actual_tcp_pose(), p[0,0,0.3,0,0,0])
+     current_pos≔get_actual_tcp_pose()
+     end_screw_driving()
+     MoveJ
+       current_pos
+     If DangerRH_dist≤0.2
+       DangerRH≔ True 
+     ElseIf DangerLH_dist≤0.2
+       DangerLH≔ True 
+     ElseIf home_dist≤0.01
+       DangerBypass≔ True 
+     Loop PRG_CALL≟30
+       If DangerLH≟ True  and LH_BOLT_pos≟ False  and RH_BOLT_pos≟ False 
+         MoveL
+           Raise_TCP
+             Until (io)
+           clear_part
+           DangerLH≔ False 
+       ElseIf LH_BOLT_pos≟ True 
+         MoveL
+           Reverse_TCP_blt
+             Until (io)
+         Set LH_BOLT_pos= False 
+       ElseIf DangerRH≟ True 
+         MoveL
+           Reverse_TCP_RH
+             Until (io)
+           DangerRH≔ False 
+       ElseIf RH_BOLT_pos≟ True 
+         MoveL
+           Reverse_TCP_blt
+             Until (io)
+         Set RH_BOLT_pos= False 
+       ElseIf DangerBypass≟ True 
+         MoveJ
+           intermediate_3
+             Until (io)
+           DangerBypass≔ False 
+       Else
+         MoveJ
+           Bypass_pos
+             Until (io)
+   Thread_1
+     home_dist≔pose_dist(Home_pos,get_actual_tcp_pose())
+     bypass_dist≔pose_dist(Bypass_pos,get_actual_tcp_pose())
+     DangerLH_dist≔pose_dist(Danger_zone_LH, get_actual_tcp_pose())
+     DangerRH_dist≔pose_dist(Danger_zone_RH, get_actual_tcp_pose())
+     'home position'
+     If pose_dist(Home_pos, get_actual_tcp_pose())<0.001
+       Set HOME_pos=On
+       Set LH_ZONE_CLEAR=Off
+       Set RH_ZONE_CLEAR=Off
+       sync()
+     Else
+       Set HOME_pos=Off
+       sync()
+     'bypass position'
+     If pose_dist(Bypass_pos, get_actual_tcp_pose())<0.001 and force_complete≟ False 
+       Set BYPASS_pos=On
+       Set RH_ZONE_CLEAR=On
+       Set LH_ZONE_CLEAR=On
+       sync()
+     Else
+       Set BYPASS_pos=Off
+       sync()
+     sync()
